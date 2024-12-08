@@ -4,6 +4,10 @@ import os
 
 app = Flask(__name__)
 
+@app.route('/')
+def home():
+    return "Welcome to the Ride Events API! Use the endpoints to get data."
+
 @app.route('/events', methods=['GET'])
 def get_events():
     # Placeholder for event data
@@ -15,14 +19,25 @@ def get_events():
 
 @app.route('/weather', methods=['GET'])
 def get_weather():
-    location = request.args.get('location')  # Example: ?location=London
-    api_key = os.getenv('WEATHER_API_KEY')
-    url = f"http://api.openweathermap.org/data/2.5/weather?q={location}&appid={api_key}"
-    response = requests.get(url)
-    if response.status_code == 200:
-        return jsonify(response.json())
-    else:
-        return jsonify({"error": "Unable to fetch weather data"}), response.status_code
+    # Get location coordinates from user input
+    latitude = request.args.get('latitude')
+    longitude = request.args.get('longitude')
+
+    # Check if latitude and longitude are provided
+    if not latitude or not longitude:
+        return jsonify({"error": "Please provide latitude and longitude"}), 400
+
+    # Construct the Open-Meteo API URL
+    url = f"https://api.open-meteo.com/v1/forecast?latitude={latitude}&longitude={longitude}&daily=temperature_2m_max,temperature_2m_min&timezone=auto"
+
+    try:
+        # Make the API request
+        response = requests.get(url)
+        response.raise_for_status()  # Raise exception for HTTP errors
+        data = response.json()
+        return jsonify(data)  # Return the weather data as JSON
+    except requests.exceptions.RequestException as e:
+        return jsonify({"error": str(e)}), 500
 
 if __name__ == '__main__':
     app.run(debug=True)
